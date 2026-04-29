@@ -27,7 +27,8 @@ Status: Draft
 
 ## Architecture Overview
 - Frontend: React (Next.js App Router) + Monaco editor for LaTeX editing.
-- Backend API: Node.js (Next.js API routes) or Python service for parsing pipeline.
+- Backend API: Python parsing service (FastAPI) for ingestion, extraction, and retrieval.
+- Web API: Next.js API routes for UI-driven actions and orchestration.
 - Storage:
   - Object storage for PDFs and extracted images.
   - Vector DB: Pinecone for text/image embeddings.
@@ -50,7 +51,7 @@ Status: Draft
 - Extract text and layout from PDF pages using a layout-aware parser.
 - For formulas:
   - Prefer native PDF math extraction if available.
-  - Fall back to formula OCR (Mathpix or similar) for exact LaTeX.
+  - Fall back to formula OCR using open-source LaTeX-OCR (pix2tex) for exact LaTeX.
   - Preserve inline vs display math and page coordinates.
 - Store formula text separately to enforce fidelity in generation.
 
@@ -92,7 +93,7 @@ Status: Draft
 
 ## Risks and Mitigations
 - Formula fidelity is hard from rasterized math.
-  - Mitigation: allow selective manual fixes in editor; prioritize Mathpix.
+  - Mitigation: allow selective manual fixes in editor; pix2tex with optional paid fallback if needed.
 - 5-minute constraint under large inputs.
   - Mitigation: pre-process and cache embeddings on upload; async queues.
 - PDF parsing variability.
@@ -105,7 +106,26 @@ Status: Draft
 4. LaTeX draft generation + preview.
 5. In-browser LaTeX editing and export.
 
+## Team Assignments (Draft)
+- C: Frontend UI, LaTeX editor, and export workflow.
+- V: Python parsing service, OCR integration, and indexing pipeline.
+
+## Implementation Skeleton Ownership
+- C-owned starter files: web/app/page.tsx, web/app/components/EditorPane.tsx, web/lib/api.ts
+- V-owned starter files: backend/app/main.py, backend/app/routes/*, backend/app/services/*
+
+## Diagram (Architecture)
+```mermaid
+flowchart LR
+  U[User] --> W[Web App (Next.js)]
+  W --> A[API Routes]
+  A --> P[Python Parsing Service]
+  P --> S[Object Storage]
+  P --> X[Vector DB (Pinecone)]
+  P --> D[Postgres]
+  A --> L[LaTeX Renderer]
+  L --> W
+```
+
 ## Open Questions
-- Exact choice of formula OCR provider (Mathpix vs open-source alternatives).
-- Whether to run parsing in Python microservice vs Node worker.
 - Maximum PDF size and concurrency targets.
