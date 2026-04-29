@@ -6,3 +6,6 @@ pymupdf
 pillow
 numpy
 requests
+pinecone
+python-dotenv
+pydantic-settings

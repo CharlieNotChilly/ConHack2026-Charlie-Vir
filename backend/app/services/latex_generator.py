@@ -3,8 +3,56 @@ from typing import List
 from ..models import AidSheetDraft, AidSheetRequest, RetrievalCandidate
 
 
+def _escape_latex(text: str) -> str:
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    for src, dest in replacements.items():
+        text = text.replace(src, dest)
+    return text
+
+
 async def build_draft(
     request: AidSheetRequest, candidates: List[RetrievalCandidate]
 ) -> AidSheetDraft:
-    # [V] TODO: assemble LaTeX with exact formulas + figures
-    return AidSheetDraft(latex_source="% TODO")
+    title = _escape_latex(request.course_id)
+    instructions = _escape_latex(request.instructions or "")
+    bullets = []
+    for candidate in candidates[:12]:
+        content = candidate.content.strip()
+        if content:
+            bullets.append(f"\\item { _escape_latex(content[:240]) }")
+
+    bullet_block = "\n".join(bullets) if bullets else "\\item TODO: Add content"
+
+    latex = f"""\\documentclass[10pt]{{article}}
+\\usepackage[margin=0.5in]{{geometry}}
+\\usepackage{{multicol}}
+\\usepackage{{amsmath,amssymb}}
+\\usepackage{{graphicx}}
+\\setlength{{\\parindent}}{{0pt}}
+
+\\begin{{document}}
+\\begin{{center}}\\textbf{{{title}}}\\end{{center}}
+\\vspace{{0.2em}}
+
+\\textbf{{Instructions:}} {instructions}
+
+\\begin{{multicols}}{{2}}
+\\begin{{itemize}}
+{bullet_block}
+\\end{{itemize}}
+\\end{{multicols}}
+\\end{{document}}
+"""
+
+    return AidSheetDraft(latex_source=latex)
