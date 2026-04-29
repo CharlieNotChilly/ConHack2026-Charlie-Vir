@@ -55,3 +55,7 @@ class AidSheetPreview(BaseModel):
     latex_source: str
     pdf_base64: str
     warnings: Optional[List[str]] = None
+
+
+class AidSheetPreviewRequest(AidSheetRequest):
+    latex_source: Optional[str] = None

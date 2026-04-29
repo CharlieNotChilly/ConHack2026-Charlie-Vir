@@ -21,6 +21,28 @@ def _escape_latex(text: str) -> str:
     return text
 
 
+def append_images(latex_source: str, image_paths: List[str]) -> str:
+    if not image_paths:
+        return latex_source
+
+    blocks = [
+        "\\section*{Figures}",
+        "\\vspace{0.4em}",
+    ]
+    for path in image_paths:
+        safe_path = path.replace("\\", "/")
+        blocks.append("\\begin{center}")
+        blocks.append(f"\\includegraphics[width=0.9\\linewidth]{{{safe_path}}}")
+        blocks.append("\\end{center}")
+        blocks.append("\\vspace{0.6em}")
+    block = "\n".join(blocks)
+
+    marker = "\\end{document}"
+    if marker in latex_source:
+        return latex_source.replace(marker, f"{block}\n{marker}", 1)
+    return f"{latex_source}\n{block}"
+
+
 async def build_draft(
     request: AidSheetRequest, candidates: List[RetrievalCandidate]
 ) -> AidSheetDraft:

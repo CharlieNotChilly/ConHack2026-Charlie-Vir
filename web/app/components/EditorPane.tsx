@@ -54,7 +54,7 @@ export default function EditorPane({ initialLatex, warnings, request, onBack }: 
     setIsRefreshing(true);
     setPreviewError(null);
     try {
-      const result = await previewAidSheet(request);
+      const result = await previewAidSheet({ ...request, latex_source: latexSource });
       setPdfBase64(result.pdf_base64);
     } catch (err) {
       setPreviewError(String(err));

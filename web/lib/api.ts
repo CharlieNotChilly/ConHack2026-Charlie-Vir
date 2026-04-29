@@ -22,6 +22,10 @@ export interface AidSheetPreview {
   warnings?: string[];
 }
 
+export interface AidSheetPreviewRequest extends AidSheetRequest {
+  latex_source?: string;
+}
+
 export async function uploadLecture(file: File): Promise<IngestResult> {
   const form = new FormData();
   form.append("file", file);
@@ -46,7 +50,7 @@ export async function generateAidSheet(payload: AidSheetRequest): Promise<AidShe
   return res.json();
 }
 
-export async function previewAidSheet(payload: AidSheetRequest): Promise<AidSheetPreview> {
+export async function previewAidSheet(payload: AidSheetPreviewRequest): Promise<AidSheetPreview> {
   const res = await fetch("/api/preview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
