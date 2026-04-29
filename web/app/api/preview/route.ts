@@ -4,7 +4,7 @@ const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const res = await fetch(`${BACKEND}/generate/`, {
+  const res = await fetch(`${BACKEND}/generate/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
