@@ -3,12 +3,14 @@ export interface IngestResult {
   pages_indexed: number;
   chunks_indexed: number;
   source_path: string;
+  namespace?: string;
 }
 
 export interface AidSheetRequest {
   course_id: string;
   target_pages: number;
   instructions?: string;
+  namespaces?: string[];
 }
 
 export interface AidSheetDraft {

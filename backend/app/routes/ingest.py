@@ -18,6 +18,7 @@ async def upload_lecture(file: UploadFile) -> IngestResult:
     job_id = lecture_id
     stage = "saving"
     file_path = ""
+    namespace = vector_store.normalize_namespace(file.filename or "upload.pdf")
 
     try:
         file_path = await storage.save_upload(file)
@@ -43,7 +44,9 @@ async def upload_lecture(file: UploadFile) -> IngestResult:
             "Indexing pages",
             extra={"lecture_id": lecture_id, "file_path": file_path, "page_count": len(pages)},
         )
-        chunks_indexed = await vector_store.index_pages(pages, file_path)
+        chunks_indexed = await vector_store.index_pages(
+            pages, file_path, namespace=namespace
+        )
         logger.info(
             "Indexed pages",
             extra={
@@ -74,6 +77,7 @@ async def upload_lecture(file: UploadFile) -> IngestResult:
         pages_indexed=len(pages),
         chunks_indexed=chunks_indexed,
         source_path=file_path,
+        namespace=namespace,
     )
 
 
@@ -95,11 +99,14 @@ async def ingest_from_path(path: str) -> IngestResult:
     job_id = lecture_id
     stage = "parsing"
     pdf_parser.set_job_status(job_id, "parsing", source_path=str(target))
+    namespace = vector_store.normalize_namespace(target.name)
     try:
         pages = await pdf_parser.parse_pdf(str(target), lecture_id)
         stage = "indexing"
         pdf_parser.set_job_status(job_id, "indexing", pages_parsed=len(pages))
-        chunks_indexed = await vector_store.index_pages(pages, str(target))
+        chunks_indexed = await vector_store.index_pages(
+            pages, str(target), namespace=namespace
+        )
         pdf_parser.set_job_status(
             job_id,
             "completed",
@@ -121,4 +128,5 @@ async def ingest_from_path(path: str) -> IngestResult:
         pages_indexed=len(pages),
         chunks_indexed=chunks_indexed,
         source_path=str(target),
+        namespace=namespace,
     )

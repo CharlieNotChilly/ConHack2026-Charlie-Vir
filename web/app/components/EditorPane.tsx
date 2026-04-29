@@ -61,7 +61,7 @@ export default function EditorPane({ initialLatex, warnings, request, onBack }: 
     } finally {
       setIsRefreshing(false);
     }
-  }, [request]);
+  }, [latexSource, request]);
 
   const exportLatex = () => {
     const blob = new Blob([latexSource], { type: "text/plain" });

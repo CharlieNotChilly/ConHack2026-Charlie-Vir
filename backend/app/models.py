@@ -38,12 +38,14 @@ class IngestResult(BaseModel):
     pages_indexed: int
     chunks_indexed: int
     source_path: str
+    namespace: Optional[str] = None
 
 
 class AidSheetRequest(BaseModel):
     course_id: str
     target_pages: int
     instructions: Optional[str] = None
+    namespaces: Optional[List[str]] = None
 
 
 class AidSheetDraft(BaseModel):
@@ -59,3 +61,5 @@ class AidSheetPreview(BaseModel):
 
 class AidSheetPreviewRequest(AidSheetRequest):
     latex_source: Optional[str] = None
+
+

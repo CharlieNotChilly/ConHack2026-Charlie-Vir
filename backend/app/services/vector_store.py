@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
-from typing import List
+import re
+from typing import List, Optional
 
 import fitz
 from pinecone import Pinecone, ServerlessSpec
@@ -54,6 +55,14 @@ def _get_index():
     return client.Index(settings.pinecone_index)
 
 
+def normalize_namespace(document_name: str) -> str:
+    base = Path(document_name).stem.lower()
+    base = re.sub(r"[^a-z0-9]+", "-", base).strip("-")
+    if not base:
+        base = "document"
+    return base[:64]
+
+
 def _extract_images(file_path: str, lecture_id: str) -> List[dict]:
     images: List[dict] = []
     try:
@@ -92,7 +101,9 @@ def _extract_images(file_path: str, lecture_id: str) -> List[dict]:
     return images
 
 
-async def index_pages(pages: List[PageRecord], source_path: str) -> int:
+async def index_pages(
+    pages: List[PageRecord], source_path: str, namespace: Optional[str] = None
+) -> int:
     index = _get_index()
     if index is None:
         return 0
@@ -136,7 +147,7 @@ async def index_pages(pages: List[PageRecord], source_path: str) -> int:
                         "Upserting batch",
                         extra={"count": len(vectors), "source_path": source_path},
                     )
-                    index.upsert(vectors=vectors)
+                    index.upsert(vectors=vectors, namespace=namespace)
                     requests = []
                     metadata_list = []
     except Exception:
@@ -165,7 +176,7 @@ async def index_pages(pages: List[PageRecord], source_path: str) -> int:
                 "Upserting final batch",
                 extra={"count": len(vectors), "source_path": source_path},
             )
-            index.upsert(vectors=vectors)
+            index.upsert(vectors=vectors, namespace=namespace)
         text_chunk_total = total_chunks
         image_vectors_total = 0
         lecture_id = pages[0].lecture_id if pages else Path(source_path).stem
@@ -193,7 +204,7 @@ async def index_pages(pages: List[PageRecord], source_path: str) -> int:
                     "Upserting image batch",
                     extra={"count": len(vectors), "source_path": source_path},
                 )
-                index.upsert(vectors=vectors)
+                index.upsert(vectors=vectors, namespace=namespace)
                 image_vectors_total += len(vectors)
 
         return text_chunk_total + image_vectors_total
@@ -209,20 +220,36 @@ async def retrieve(request: AidSheetRequest) -> List[RetrievalCandidate]:
     index = _get_index()
     if index is None:
         return []
+    namespaces = request.namespaces or []
+    if not namespaces:
+        return []
     query_text = request.instructions or "aid sheet"
     embeddings = await embed_text([EmbeddingRequest(id="query", text=query_text)])
     query_vector = embeddings[0].vector
-    response = index.query(vector=query_vector, top_k=20, include_metadata=True)
-
-    candidates: List[RetrievalCandidate] = []
-    for match in response.get("matches", []):
-        metadata = match.get("metadata", {})
-        candidates.append(
-            RetrievalCandidate(
-                id=match.get("id", ""),
-                type=metadata.get("type", "text"),
-                content=metadata.get("content", ""),
-                metadata=metadata,
-            )
+    per_namespace = max(5, 20 // max(1, len(namespaces)))
+    combined: dict[str, RetrievalCandidate] = {}
+    scores: dict[str, float] = {}
+    for namespace in namespaces:
+        response = index.query(
+            vector=query_vector,
+            top_k=per_namespace,
+            include_metadata=True,
+            namespace=namespace,
         )
-    return candidates
+        for match in response.get("matches", []):
+            match_id = match.get("id", "")
+            if not match_id:
+                continue
+            score = float(match.get("score") or 0.0)
+            metadata = match.get("metadata", {})
+            if match_id not in combined or score > scores.get(match_id, 0.0):
+                combined[match_id] = RetrievalCandidate(
+                    id=match_id,
+                    type=metadata.get("type", "text"),
+                    content=metadata.get("content", ""),
+                    metadata=metadata,
+                )
+                scores[match_id] = score
+
+    ranked = sorted(combined.values(), key=lambda item: scores.get(item.id, 0.0), reverse=True)
+    return ranked[:20]

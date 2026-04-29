@@ -62,10 +62,14 @@ export default function HomePage() {
     setError(null);
     setPhase("generating");
     try {
+      const namespaces = Array.from(
+        new Set(uploads.map((entry) => entry.result.namespace).filter(Boolean))
+      ) as string[];
       const payload: AidSheetRequest = {
         course_id: courseId.trim(),
         target_pages: targetPages,
         instructions: instructions.trim() || undefined,
+        namespaces: namespaces.length > 0 ? namespaces : undefined,
       };
       const result = await generateAidSheet(payload);
       setDraft(result);
@@ -80,7 +84,16 @@ export default function HomePage() {
     course_id: courseId.trim(),
     target_pages: targetPages,
     instructions: instructions.trim() || undefined,
+    namespaces: uploads
+      .map((entry) => entry.result.namespace)
+      .filter(Boolean) as string[],
   };
+
+  const handleBack = useCallback(() => {
+    setPhase("setup");
+    setDraft(null);
+    setUploads([]);
+  }, []);
 
   if (phase === "editing" && draft) {
     return (
@@ -88,7 +101,7 @@ export default function HomePage() {
         initialLatex={draft.latex_source}
         warnings={draft.warnings}
         request={request}
-        onBack={() => setPhase("setup")}
+        onBack={handleBack}
       />
     );
   }
