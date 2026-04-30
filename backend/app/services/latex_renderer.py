@@ -47,7 +47,7 @@ def compile_latex_to_pdf(latex_source: str, work_dir: str) -> Tuple[bytes, str |
 
     work_path = Path(work_dir)
     tex_path = work_path / "main.tex"
-    tex_path.write_text(latex_source, encoding="utf-8")
+    tex_path.write_text(latex_source.replace("\r\n", "\n").replace("\r", "\n"), encoding="utf-8")
 
     try:
         subprocess.run(
