@@ -33,9 +33,9 @@ async def preview_aidsheet(request: AidSheetPreviewRequest) -> AidSheetPreview:
         ]
 
     with tempfile.TemporaryDirectory(prefix="aid-preview-") as work_dir:
-        image_paths = image_extractor.materialize_images(candidates, work_dir)
-        if image_paths:
-            latex_source = latex_generator.append_images(latex_source, image_paths)
+        image_entries = image_extractor.materialize_images(candidates, work_dir)
+        if image_entries:
+            latex_source = latex_generator.append_images(latex_source, image_entries)
 
         pdf_bytes, error = latex_renderer.compile_latex_to_pdf(latex_source, work_dir)
         if error:

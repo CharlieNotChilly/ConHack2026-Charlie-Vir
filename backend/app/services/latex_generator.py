@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import requests
 
@@ -73,11 +73,36 @@ def _extract_latex(raw: str) -> str:
     return raw.strip()
 
 
-def append_images(latex_source: str, image_paths: List[str]) -> str:
-    if not image_paths:
+def _ensure_graphicx(latex_source: str) -> str:
+    if "\\usepackage{graphicx}" in latex_source:
         return latex_source
-    blocks = ["\\section*{Figures}", "\\vspace{0.4em}"]
-    for path in image_paths:
+
+    insert = "\\usepackage{graphicx}\n"
+    if "\\begin{document}" in latex_source:
+        return latex_source.replace("\\begin{document}", f"{insert}\\begin{{document}}", 1)
+
+    if "\\documentclass" in latex_source:
+        parts = latex_source.split("\n", 1)
+        if len(parts) == 2:
+            return f"{parts[0]}\n{insert}{parts[1]}"
+
+    return f"{insert}{latex_source}"
+
+
+def append_images(
+    latex_source: str,
+    image_entries: List[Dict[str, object]],
+) -> str:
+    if not image_entries:
+        return latex_source
+
+    latex_source = _ensure_graphicx(latex_source)
+
+    blocks = ["\\section*{Relevant Images}", "\\vspace{0.4em}"]
+    for entry in image_entries:
+        path = str(entry.get("path") or "")
+        if not path:
+            continue
         safe = path.replace("\\", "/")
         blocks += [
             "\\begin{center}",
@@ -86,9 +111,8 @@ def append_images(latex_source: str, image_paths: List[str]) -> str:
             "\\vspace{0.6em}",
         ]
     block = "\n".join(blocks)
-    marker = "\\end{document}"
-    if marker in latex_source:
-        return latex_source.replace(marker, f"{block}\n{marker}", 1)
+    if "\\end{document}" in latex_source:
+        return latex_source.replace("\\end{document}", f"{block}\n\\end{{document}}", 1)
     return f"{latex_source}\n{block}"
 
 
@@ -132,7 +156,6 @@ Rules:
 
     # Fallback: template-based bullet list
     title = _escape_latex(request.course_id)
-    instructions = _escape_latex(request.instructions or "")
     bullets = []
     for c in candidates[:12]:
         text = c.content.strip()
@@ -150,7 +173,6 @@ Rules:
 \\begin{{document}}
 \\begin{{center}}\\textbf{{{title}}}\\end{{center}}
 \\vspace{{0.2em}}
-\\textbf{{Instructions:}} {instructions}
 
 \\begin{{multicols}}{{2}}
 \\begin{{itemize}}

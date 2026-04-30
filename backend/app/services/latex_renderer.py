@@ -24,6 +24,7 @@ def compile_latex_to_pdf(latex_source: str, work_dir: str) -> Tuple[bytes, str |
                 str(work_path),
                 str(tex_path),
             ],
+            cwd=str(work_path),
             check=True,
             capture_output=True,
             text=True,

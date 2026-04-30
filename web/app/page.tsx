@@ -190,12 +190,6 @@ export default function HomePage() {
                 ))}
               </ul>
             )}
-
-            {uploads.length === 0 && (
-              <p style={{ margin: "12px 0 0", fontSize: 12, color: "#9ca3af", textAlign: "center" }}>
-                You can also generate with instructions only — no upload required.
-              </p>
-            )}
           </div>
 
           {/* Step 2: Constraints */}
