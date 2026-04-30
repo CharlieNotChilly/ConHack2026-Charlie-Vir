@@ -5,10 +5,45 @@ from pathlib import Path
 from typing import Tuple
 
 
+_PDFLATEX_PACKAGES = (
+    "\\usepackage[utf8]{inputenc}",
+    "\\usepackage[T1]{fontenc}",
+    "\\usepackage{textcomp}",
+)
+
+
+def _ensure_pdflatex_packages(latex_source: str) -> str:
+    if all(pkg in latex_source for pkg in _PDFLATEX_PACKAGES):
+        return latex_source
+
+    insert = "\n".join(_PDFLATEX_PACKAGES) + "\n"
+
+    if "\\begin{document}" in latex_source:
+        return latex_source.replace("\\begin{document}", f"{insert}\\begin{{document}}", 1)
+
+    if "\\documentclass" in latex_source:
+        parts = latex_source.split("\n", 1)
+        if len(parts) == 2:
+            return f"{parts[0]}\n{insert}{parts[1]}"
+
+    return f"{insert}{latex_source}"
+
+
+def _find_latex_engine() -> tuple[str | None, str]:
+    for engine in ("xelatex", "lualatex", "pdflatex"):
+        path = shutil.which(engine)
+        if path:
+            return path, engine
+    return None, ""
+
+
 def compile_latex_to_pdf(latex_source: str, work_dir: str) -> Tuple[bytes, str | None]:
-    pdflatex = shutil.which("pdflatex")
-    if not pdflatex:
-        return b"", "pdflatex not found; install a LaTeX engine to enable preview."
+    engine_path, engine_name = _find_latex_engine()
+    if not engine_path:
+        return b"", "LaTeX engine not found; install MacTeX or a compatible TeX distribution."
+
+    if engine_name == "pdflatex":
+        latex_source = _ensure_pdflatex_packages(latex_source)
 
     work_path = Path(work_dir)
     tex_path = work_path / "main.tex"
@@ -17,9 +52,10 @@ def compile_latex_to_pdf(latex_source: str, work_dir: str) -> Tuple[bytes, str |
     try:
         subprocess.run(
             [
-                pdflatex,
+                engine_path,
                 "-interaction=nonstopmode",
                 "-halt-on-error",
+                "-file-line-error",
                 "-output-directory",
                 str(work_path),
                 str(tex_path),
@@ -30,8 +66,10 @@ def compile_latex_to_pdf(latex_source: str, work_dir: str) -> Tuple[bytes, str |
             text=True,
         )
     except subprocess.CalledProcessError as exc:
-        stderr_tail = (exc.stderr or "").splitlines()[-6:]
-        detail = "\n".join(stderr_tail) or "LaTeX compilation failed."
+        stderr_tail = (exc.stderr or "").splitlines()[-8:]
+        stdout_tail = (exc.stdout or "").splitlines()[-8:]
+        detail_lines = [line for line in (stderr_tail + stdout_tail) if line]
+        detail = "\n".join(detail_lines[-10:]) or "LaTeX compilation failed."
         return b"", detail
 
     pdf_path = work_path / "main.pdf"

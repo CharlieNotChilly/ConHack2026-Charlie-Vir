@@ -124,10 +124,10 @@ export default function HomePage() {
           <Logo />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "white", letterSpacing: "-0.3px" }}>
-              Lecture → LaTeX
+              EasySheet
             </div>
             <div style={{ fontSize: 11, color: "#818cf8", marginTop: 1 }}>
-              AI-powered aid sheet generator
+              Lecture-to-LaTeX aid sheet generator
             </div>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function HomePage() {
         {/* Hero line */}
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 700, color: "#1e1b4b", letterSpacing: "-0.5px" }}>
-            Generate your aid sheet in seconds
+            Generate your EasySheet in seconds
           </h1>
           <p style={{ margin: 0, fontSize: 15, color: "#6b7280" }}>
             Upload lecture PDFs · set constraints · get an editable LaTeX document
