@@ -8,7 +8,7 @@ from ..models import AidSheetDraft, AidSheetRequest, RetrievalCandidate
 
 logger = logging.getLogger(__name__)
 
-_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-2.0-flash"]
+_GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3-flash-preview"]
 
 
 def _escape_latex(text: str) -> str:
