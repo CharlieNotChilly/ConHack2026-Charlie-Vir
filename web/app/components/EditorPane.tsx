@@ -46,16 +46,27 @@ function LaTeXEmptyState() {
 
 export default function EditorPane({ initialLatex, warnings, request, onBack }: Props) {
   const [latexSource, setLatexSource] = useState(initialLatex);
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewWarnings, setPreviewWarnings] = useState<string[]>([]);
 
   const refreshPreview = useCallback(async () => {
     setIsRefreshing(true);
     setPreviewError(null);
+    setPreviewWarnings([]);
     try {
       const result = await previewAidSheet({ ...request, latex_source: latexSource });
-      setPdfBase64(result.pdf_base64);
+
+      if (result.warnings?.length) setPreviewWarnings(result.warnings);
+
+      // Use a Blob URL — Chrome blocks data: URLs for PDFs in iframes
+      const bytes = atob(result.pdf_base64);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      const blob = new Blob([arr], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      setPdfUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
     } catch (err) {
       setPreviewError(String(err));
     } finally {
@@ -74,17 +85,11 @@ export default function EditorPane({ initialLatex, warnings, request, onBack }: 
   };
 
   const exportPdf = () => {
-    if (!pdfBase64) return;
-    const bytes = atob(pdfBase64);
-    const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    const blob = new Blob([arr], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
+    if (!pdfUrl) return;
     const a = document.createElement("a");
-    a.href = url;
+    a.href = pdfUrl;
     a.download = `${request.course_id}-aid-sheet.pdf`;
     a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -161,7 +166,7 @@ export default function EditorPane({ initialLatex, warnings, request, onBack }: 
         <button
           className="btn btn-accent"
           onClick={exportPdf}
-          disabled={!pdfBase64}
+          disabled={!pdfUrl}
           style={{ fontSize: 13 }}
         >
           <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
@@ -172,13 +177,23 @@ export default function EditorPane({ initialLatex, warnings, request, onBack }: 
         </button>
       </div>
 
-      {/* Warnings */}
+      {/* Generation warnings */}
       {warnings && warnings.length > 0 && (
         <div className="warning-banner">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="#f59e0b" style={{ flexShrink: 0 }}>
             <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
           </svg>
           {warnings.join(" · ")}
+        </div>
+      )}
+
+      {/* Preview warnings (e.g. pdflatex not installed) */}
+      {previewWarnings.length > 0 && (
+        <div className="warning-banner">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="#f59e0b" style={{ flexShrink: 0 }}>
+            <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+          </svg>
+          {previewWarnings.join(" · ")}
         </div>
       )}
 
@@ -236,9 +251,9 @@ export default function EditorPane({ initialLatex, warnings, request, onBack }: 
               <div style={{ fontWeight: 600, marginBottom: 6 }}>Preview failed</div>
               {previewError}
             </div>
-          ) : pdfBase64 ? (
+          ) : pdfUrl ? (
             <iframe
-              src={`data:application/pdf;base64,${pdfBase64}`}
+              src={pdfUrl}
               style={{ width: "100%", height: "100%", border: "none" }}
             />
           ) : (
